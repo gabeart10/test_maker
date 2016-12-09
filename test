@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+
+'''Customisable test program'''
+
+import colors as c
+import random as r
+import json
+import copy
+import time
+
+def grade(num_right,numquestions):
+    zero = 0
+    if num_right == 0:
+        zero = 1
+    else:
+        num_right = num_right / numquestions
+        num_right = num_right * 100
+    if num_right <= 70 or zero == 1:
+        print(str(num_right) + "% " + c.red + "F" + c.reset)
+    elif num_right > 70 and num_right <= 76:
+        print(str(num_right) + "% " + c.yellow + "D" + c.reset)
+    elif num_right > 76 and num_right <= 84:
+        print(str(num_right) + "% " + c.cyan + "C" + c.reset)
+    elif num_right > 84 and num_right <= 92:
+        print(str(num_right) + "% " + c.blue + "B" + c.reset)
+    elif num_right > 92 and num_right <= 100:
+        print(str(num_right) + "% " + c.green + "A" + c.reset)
+    with open('v.json','r+') as f:
+        data = json.load(f)
+        data["last"] = str(num_right) + "%"
+        f.seek(0)
+        json.dump(data,f,indent=4)
+        f.truncate()
+        f.close()
+
+def settings():
+    while True:
+        setting = input(c.clear + c.blue + "Change current test('cct')\n" + c.green + "Add test('at')\n" + c.green + "List tests('lt')\n" + c.red + "Remove test('rt')\n" + c.red + "exit('e')\n" + c.reset).strip().lower()
+        if setting == 'cct':
+            with open('v.json','r+') as f:
+                data = json.load(f)
+                u_data = input(c.clear + c.blue + 'What test?\n' + c.reset)
+                data['current'] = u_data
+                current_test.import_test(data['current'])
+                f.seek(0)
+                json.dump(data,f,indent=4)
+                f.truncate()
+                f.close()
+        elif setting == 'at':
+            add_data = Test()
+            u_data = input(c.clear + c.blue + "How many questions?\n" + c.reset)
+            if int(u_data) < 4:
+                print(c.red + "Please have over 4 questions!" + c.reset)
+                input()
+                continue
+            for i in range(int(u_data)):
+                u_data_q = input(c.clear + c.blue + "Question " + str(i) + '\n' + c.reset)
+                u_data_a = input(c.clear + c.blue + "Answer " + str(i) + '\n' + c.reset)
+                add_data.add_qa(u_data_q,u_data_a)
+            u_data = input(c.clear + c.blue + "Test name?\n" + c.reset)
+            add_data.export_test(u_data)
+        elif setting == 'rt':
+            with open('tests.json','r+') as f:
+                try:
+                    data = json.load(f)
+                    q_data = input(c.clear + c.blue + "Test name?\n" + c.reset)
+                    del data[q_data]
+                except:
+                    print(c.red + "Not a test!" + c.reset)
+                    input()
+                    f.close()
+                    continue
+                f.seek(0)
+                json.dump(data,f,indent=4)
+                f.truncate()
+                f.close()
+            with open('v.json','r+') as f:
+                data = json.load(f)
+                if q_data == data['current']:
+                    current_test.qa_data = {'questions' : [], 'answers' : []}
+                    current_test.numquestion = 0
+                    data['current'] = ""
+                f.seek(0)
+                json.dump(data,f,indent=4)
+                f.truncate()
+                f.close()
+        elif setting == 'lt':
+            with open('tests.json','r') as f:
+                data = json.load(f)
+                f.close()
+            print(c.clear + c.blue + str(list(data)) + c.reset)
+            input()
+        elif setting == 'e':
+            break
+        else:
+            print(c.red + "Setting not found!" + c.reset)
+            input()
+            continue
+        
+class Test:
+
+    def __init__(self):
+        self.qa_data = {'questions' : [],'answers' : []}
+        self.numquestion = 0
+        self.dis_data = {}
+
+    def add_qa(self,question,answer):
+        self.qa_data["q_" + str(self.numquestion)] = [question,answer]
+        self.qa_data['questions'].append(question)
+        self.qa_data['answers'].append(answer)
+        self.numquestion = len(self.qa_data['questions'])
+   
+    def fill_ans(self,name):
+        temp = r.choice(self.run_data['answers'])
+        self.run_data['answers'].remove(temp)
+        return temp
+
+    def export_test(self,name):
+        with open('tests.json','r+') as f:
+            data = json.load(f)
+            data[str(name)] = copy.deepcopy(self.qa_data)
+            f.seek(0)
+            json.dump(data,f,indent=4)
+            f.truncate()
+            f.close()
+    
+    def import_test(self,name):
+        with open('tests.json','r') as f:
+            try:
+                data = json.load(f)
+                print("Importing...")
+                self.qa_data = copy.deepcopy(data[name])
+                self.numquestion = len(self.qa_data['questions'])
+                print(c.clear)
+            except:
+                print(c.red + "Not a test name!" + c.reset)
+                return 1
+            f.close()
+
+    def dis_ans(self,current_num,data):
+        temp_data = ''
+        for sub_i in range(current_num):
+            if data[str(sub_i)] == 1:
+                temp_data += c.green + '='
+            else:
+                temp_data += c.red + '='
+        return temp_data
+
+    def run_test(self):
+        self.right = 0
+        self.run_ques = copy.copy(self.qa_data['questions'])
+        i = 0
+        for sub_i in range(self.numquestion):
+            self.dis_data[str(sub_i)] = 0
+        while i < self.numquestion:
+            print("Loading...")
+            self.run_data = copy.deepcopy(self.qa_data)
+            print(c.clear)
+            self.ans_data = {'a' : [self.fill_ans('a'),0],
+                'b' : [self.fill_ans('b'),0],
+                'c' : [self.fill_ans('c'),0],
+                'd' : [self.fill_ans('d'),0]}
+            self.cur_q = r.choice(self.run_ques)
+            for sub_i in ['q_' + str(o) for o in range(self.numquestion)]:
+                if self.qa_data[sub_i][0] == self.cur_q:
+                    self.cur_a = self.qa_data[sub_i][1]
+                    break
+            for sub_i in self.ans_data:
+                if self.ans_data[sub_i][0] == self.cur_a:
+                    self.ans_data[sub_i][1] = 1
+                    break
+            if sum(self.ans_data[sub_i][1] for i in ['a','b','c','d']) == 0:
+                continue
+            print(c.blue + self.cur_q + c.cyan + "\nA:" + self.ans_data['a'][0] + "\nB:" + self.ans_data['b'][0] + "\nC:" + self.ans_data['c'][0] + "\nD:" + self.ans_data['d'][0] + c.reset)
+            print(c.blue + '[' + self.dis_ans(i,self.dis_data) + c.base00 + '='*(self.numquestion - i) + c.blue + ']' + c.reset)
+            self.answer = input(c.yellow + "Answer:" + c.blue).strip().lower()
+            if self.answer == 'a' and self.ans_data['a'][1] == 1: 
+                print(c.green + "Correct" + c.reset)
+                self.right += 1
+                self.dis_data[str(i)] = 1
+            elif self.answer == 'b' and self.ans_data['b'][1] == 1: 
+                print(c.green + "Correct" + c.reset)
+                self.right += 1
+                self.dis_data[str(i)] = 1
+            elif self.answer == 'c' and self.ans_data['c'][1] == 1: 
+                print(c.green + "Correct" + c.reset)
+                self.right += 1
+                self.dis_data[str(i)] = 1
+            elif self.answer == 'd' and self.ans_data['d'][1] == 1: 
+                print(c.green + "Correct" + c.reset)
+                self.right += 1
+                self.dis_data[str(i)] = 1
+            else:
+                print(c.red + "Wrong" + c.reset)
+            input(c.blue + "Next? " + c.reset)
+            print(c.clear)
+            self.run_ques.remove(self.cur_q)
+            i += 1
+        print(c.cyan + str(self.right) + "/" + str(self.numquestion) + c.reset)
+        grade(self.right,self.numquestion)
+        input("Done? ")
+
+with open('v.json') as f:
+    v_data = json.load(f)
+    f.close()
+
+current_test = Test()
+current_test.import_test(v_data['current'])
+current_verson = '2.0'
+
+while True:
+    with open('v.json') as f:
+        last_data = json.load(f)
+        f.close()
+
+    print(c.clear)
+    if last_data['v'] != current_verson:
+        print(c.red + 'Please update to verson ' + current_verson + c.reset)
+    user_in = input(c.blue + "Welcome to the test!\nIf you would like to edit/create the program type 'settings'\nAre you ready?\nLast Score: " + last_data["last"] + "\n" + c.reset).lower().strip()
+    print(c.clear)
+    if user_in == 'settings':
+        settings()
+    elif user_in == 'exit':
+        break
+    else:
+        #try:
+            current_test.run_test()
+        #except:
+        #    print(c.red + "Warning current test not found!" + c.reset)
+
+
+
+
