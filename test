@@ -2,7 +2,7 @@
 
 '''Customisable test program'''
 
-import colors as c
+import skilstak.colors as c
 import random as r
 import json
 import copy
